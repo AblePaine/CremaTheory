@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ratio Scaler — CremaTheory</title>
+<meta name="description" content="Scale a coffee dose-to-yield ratio in either direction: from dose to water or beverage, or back.">
+<link rel="stylesheet" href="assets/crema.css">
+</head>
+<body>
+<header class="site-head">
+  <a class="brand" href="index.html">CremaTheory</a>
+  <nav>
+    <a href="water.html">Water</a>
+    <a href="extraction.html">Extraction</a>
+    <a href="ratio.html" aria-current="page">Ratio</a>
+    <a href="strength.html">Strength</a>
+    <a href="caffeine.html">Caffeine</a>
+  </nav>
+</header>
+<main>
+  <h1>Ratio scaler</h1>
+  <p class="why">A ratio is the one part of a recipe that still works when you change the batch size. Once you have one you like, you can brew one cup or a carafe from it. Filter and espresso people mean different things by the second number, though. For pourover it's the water you pour. For espresso it's the liquid in the cup. This page keeps track of which one you mean.</p>
+
+  <form class="card" onsubmit="return false">
+    <label>Ratio</label>
+    <div class="seg" role="group" aria-label="Ratio preset" id="presets"></div>
+    <div class="grid two" style="margin-top:.9rem">
+      <div>
+        <label for="ratio">Custom 1 : <span class="hint">coffee to output</span></label>
+        <input id="ratio" type="number" inputmode="decimal" min="0" step="any" value="16">
+      </div>
+      <div>
+        <label for="basis">Second number means</label>
+        <select id="basis">
+          <option value="water">Brew water (pourover habit)</option>
+          <option value="beverage">Beverage in the cup (espresso habit)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="seg" role="group" aria-label="Direction" style="margin-top:1rem">
+      <button type="button" data-d="fwd" aria-pressed="true">I know the dose</button>
+      <button type="button" data-d="rev" aria-pressed="false">I know the output</button>
+    </div>
+    <div class="grid two" style="margin-top:.9rem">
+      <div>
+        <label for="known" id="knownLabel">Dose <span class="hint">g coffee</span></label>
+        <input id="known" type="number" inputmode="decimal" min="0" step="any" value="20">
+      </div>
+      <div id="retWrap">
+        <label for="ret">Grounds hold back <span class="hint">g liquid per g coffee<sup><a href="#n1">1</a></sup></span></label>
+        <input id="ret" type="number" inputmode="decimal" min="0" step="any" value="2.0">
+      </div>
+    </div>
+  </form>
+
+  <section class="card" aria-live="polite">
+    <p class="error" id="err" hidden></p>
+    <div id="out">
+      <div class="result"><span id="main">–</span> <small id="mainLabel"></small></div>
+      <p class="sub" id="secondary"></p>
+    </div>
+  </section>
+
+  <h2>How it's worked out</h2>
+  <div class="work" id="work"></div>
+
+  <section class="foot">
+    <ol>
+      <li id="n1">Spent grounds hold some liquid back, usually around 2 g for every gram of coffee in filter brewing. Reported figures run from about 1.8 to 2.2 depending on grind and filter. So the cup-weight figure for pourover is an estimate. Weigh your cup once and adjust this number to match your setup. Espresso isn't converted because you weigh the shot directly.</li>
+      <li>1:15–1:17 is the common pourover range and 1:2 the common espresso starting point. They are conventions, not rules.</li>
+    </ol>
+  </section>
+</main>
+<footer class="site-foot">CremaTheory. You enter what you know and get an exact answer.</footer>
+
+<script src="assets/crema.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var dir = 'fwd';
+  function num(id) { var v = $(id).value; return v === '' ? NaN : Number(v); }
+  function g(v) { return (Math.round(v * 10) / 10).toFixed(1); }
+
+  var presets = Crema.RATIO_PRESETS.concat([{ id: 'custom', label: 'Custom' }]);
+  $('presets').innerHTML = presets.map(function (p) {
+    return '<button type="button" data-p="' + p.id + '" aria-pressed="' + (p.id === 'po16') + '">' + p.label + '</button>';
+  }).join('');
+  function pressPreset(id) {
+    $('presets').querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.p === id)); });
+  }
+  $('presets').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    var p = presets.filter(function (x) { return x.id === b.dataset.p; })[0];
+    pressPreset(p.id);
+    if (p.ratio) { $('ratio').value = p.ratio; $('basis').value = p.basis; }
+    else $('ratio').focus();
+    render();
+  });
+  $('ratio').addEventListener('input', function () { pressPreset('custom'); });
+  $('basis').addEventListener('input', function () { pressPreset('custom'); });
+
+  document.querySelectorAll('[data-d]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      dir = b.dataset.d;
+      document.querySelectorAll('[data-d]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+      render();
+    });
+  });
+
+  function render() {
+    var basis = $('basis').value, ratio = num('ratio');
+    var outWord = basis === 'water' ? 'brew water' : 'beverage';
+    $('knownLabel').innerHTML = dir === 'fwd' ? 'Dose <span class="hint">g coffee</span>' : 'Output <span class="hint">g ' + outWord + '</span>';
+    $('retWrap').hidden = basis !== 'water';
+    var input = { ratio: ratio, basis: basis, retention: num('ret') };
+    if (basis !== 'water') input.retention = 0;
+    if (dir === 'fwd') input.dose = num('known'); else input.output = num('known');
+    var r;
+    try { r = Crema.scaleRatio(input); $('err').hidden = true; $('out').hidden = false; }
+    catch (e) { $('err').textContent = e.message; $('err').hidden = false; $('out').hidden = true; $('work').textContent = ''; return; }
+
+    if (dir === 'fwd') {
+      $('main').textContent = g(r.output) + ' g'; $('mainLabel').textContent = outWord;
+    } else {
+      $('main').textContent = g(r.dose) + ' g'; $('mainLabel').textContent = 'coffee';
+    }
+    $('secondary').textContent = basis === 'water'
+      ? 'About ' + g(r.beverageEstimate) + ' g ends up in the cup (estimate; ' + input.retention + ' g held back per g coffee).'
+      : 'Ratio 1:' + ratio + ' by beverage weight.';
+
+    var lines = dir === 'fwd'
+      ? ['output = dose × ratio', '       = ' + r.dose + ' g × ' + ratio + ' = ' + g(r.output) + ' g ' + outWord]
+      : ['dose   = output ÷ ratio', '       = ' + r.output + ' g ÷ ' + ratio + ' = ' + g(r.dose) + ' g coffee'];
+    if (basis === 'water') lines.push('', 'cup ≈ water − retention × dose', '    ≈ ' + g(r.water) + ' − ' + input.retention + ' × ' + g(r.dose) + ' = ' + g(r.beverageEstimate) + ' g');
+    $('work').textContent = lines.join('\n');
+  }
+  ['ratio', 'basis', 'known', 'ret'].forEach(function (id) { $(id).addEventListener('input', render); });
+  render();
+})();
+</script>
+</body>
+</html>

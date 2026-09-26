@@ -1,0 +1,8 @@
+{
+  "name": "crematheory",
+  "private": true,
+  "description": "CremaTheory calculators — static pages plus a shared formula module.",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  }
+}

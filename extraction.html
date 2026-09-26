@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Extraction Yield — CremaTheory</title>
+<meta name="description" content="Extraction yield from refractometer TDS, dry dose and beverage weight, with every step of the calculation shown.">
+<link rel="stylesheet" href="assets/crema.css">
+</head>
+<body>
+<header class="site-head">
+  <a class="brand" href="index.html">CremaTheory</a>
+  <nav>
+    <a href="water.html">Water</a>
+    <a href="extraction.html" aria-current="page">Extraction</a>
+    <a href="ratio.html">Ratio</a>
+    <a href="strength.html">Strength</a>
+    <a href="caffeine.html">Caffeine</a>
+  </nav>
+</header>
+<main>
+  <h1>Extraction yield</h1>
+  <p class="why">Strength (TDS) tells you how concentrated the cup is. Extraction yield tells you how much of the coffee you dissolved to get there. Two cups can have the same strength and taste completely different because one used more coffee and extracted less of it. The equation is short, and you can check every step of it below.</p>
+
+  <form class="card" onsubmit="return false">
+    <div class="seg" role="group" aria-label="Brew method">
+      <button type="button" data-m="percolation" aria-pressed="true">Pourover / drip / espresso</button>
+      <button type="button" data-m="immersion" aria-pressed="false">Full immersion</button>
+    </div>
+    <div class="grid three" style="margin-top:.9rem">
+      <div>
+        <label for="tds">TDS <span class="hint">% from refractometer</span></label>
+        <input id="tds" type="number" inputmode="decimal" min="0" step="any" value="1.35">
+      </div>
+      <div>
+        <label for="dose">Dose <span class="hint">g dry coffee</span></label>
+        <input id="dose" type="number" inputmode="decimal" min="0" step="any" value="20">
+      </div>
+      <div>
+        <label for="liq" id="liqLabel">Beverage weight <span class="hint">g in the cup</span></label>
+        <input id="liq" type="number" inputmode="decimal" min="0" step="any" value="300">
+      </div>
+    </div>
+  </form>
+
+  <section class="card" aria-live="polite">
+    <p class="error" id="err" hidden></p>
+    <div id="out">
+      <div class="result"><span id="ey">–</span><small>% extraction yield</small></div>
+      <p class="sub"><span class="status" id="eyStatus"></span> the classic 18–22% window<sup><a href="#n1">1</a></sup></p>
+      <div class="gauge" id="gauge" aria-hidden="true"></div>
+      <p class="sub">Strength <strong id="str"></strong>% TDS: <span class="status" id="strStatus"></span> the SCA 1.15–1.35% band<sup><a href="#n2">2</a></sup>. Brew ratio 1:<span id="ratio"></span>.</p>
+    </div>
+  </section>
+
+  <h2>Show the work</h2>
+  <div class="work" id="work"></div>
+  <p class="sub" id="methodNote"></p>
+
+  <section class="foot">
+    <ol>
+      <li id="n1">The 18–22% window comes from the Brewing Control Chart (Lockhart, Coffee Brewing Institute, 1950s), which the SCA's Golden Cup standard carried forward. It was built from taste panels on filter coffee of that era. More recent work, e.g. Frost, Ristenpart &amp; Guinard, <em>J. Food Sci.</em> (2020), found that liked cups spread across the chart, depending on the taster and the roast. Treat the window as a reference, not a target.</li>
+      <li id="n2">Strength bands vary by region. The SCA Golden Cup band is 1.15–1.35% TDS. European and Nordic charts put the band higher. For espresso, 18–22% is widely used, but it was never tested for espresso.</li>
+      <li id="n3"><strong>Percolation:</strong> EY = TDS × beverage ÷ dose. This counts only what reached the cup. Liquid held back in the spent bed is not counted, by convention. <strong>Immersion:</strong> assumes the liquid held in the grounds is the same strength as what you pour off, so all brew water plus the dissolved solids form one solution. That gives EY = TDS × water ÷ ((1 − TDS) × dose). A common shortcut leaves out the (1 − TDS) term. We show both because this assumption is disputed: water absorbed inside the particles may not match the concentration of the liquid around them.</li>
+      <li id="n4">“Dry dose” is the roasted coffee as weighed. Roasted beans hold a few percent moisture, and that is ignored here, as it is in almost every published EY figure. Read espresso and filter samples at the temperature your refractometer is calibrated for. Many people filter espresso samples first, and whether that is needed is also debated.</li>
+    </ol>
+  </section>
+</main>
+<footer class="site-foot">CremaTheory. You enter what you know and get an exact answer.</footer>
+
+<script src="assets/crema.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var method = 'percolation';
+  var LO = 12, HI = 28; // gauge span, % EY
+  function pos(v) { return Math.max(0, Math.min(100, (v - LO) / (HI - LO) * 100)); }
+  function num(id) { var v = $(id).value; return v === '' ? NaN : Number(v); }
+  function f(v, d) { return v.toFixed(d); }
+  var words = { within: 'Within', below: 'Below', above: 'Above' };
+
+  document.querySelectorAll('.seg button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      method = b.dataset.m;
+      document.querySelectorAll('.seg button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+      $('liqLabel').innerHTML = method === 'immersion'
+        ? 'Brew water <span class="hint">g of water added</span>'
+        : 'Beverage weight <span class="hint">g in the cup</span>';
+      render();
+    });
+  });
+
+  function render() {
+    var tds = num('tds'), dose = num('dose'), liq = num('liq'), r;
+    try {
+      r = method === 'immersion'
+        ? Crema.extractionImmersion({ tds: tds, dose: dose, water: liq })
+        : Crema.extractionPercolation({ tds: tds, dose: dose, beverage: liq });
+      $('err').hidden = true; $('out').hidden = false;
+    } catch (e) {
+      $('err').textContent = e.message; $('err').hidden = false; $('out').hidden = true; $('work').textContent = ''; return;
+    }
+    $('ey').textContent = f(r.ey, 2);
+    $('eyStatus').textContent = words[r.window];
+    $('eyStatus').className = 'status ' + r.window;
+    $('str').textContent = tds;
+    $('strStatus').textContent = words[r.strength].toLowerCase();
+    $('strStatus').className = 'status ' + r.strength;
+    $('ratio').textContent = f(r.ratio, 1);
+
+    var w = Crema.EY_WINDOW;
+    $('gauge').innerHTML =
+      '<div class="win" style="left:' + pos(w.min) + '%;width:' + (pos(w.max) - pos(w.min)) + '%"></div>' +
+      '<div class="mark" style="left:' + pos(r.ey) + '%"></div>' +
+      [LO, 18, 22, HI].map(function (t) { return '<span class="tick" style="left:' + pos(t) + '%">' + t + '%</span>'; }).join('');
+
+    var t = +(tds / 100).toPrecision(12), lines;
+    if (method === 'percolation') {
+      lines = [
+        'Solids in cup  = TDS × beverage',
+        '               = ' + tds + '% × ' + liq + ' g',
+        '               = ' + t + ' × ' + liq + ' g = ' + f(r.solids, 3) + ' g',
+        '',
+        'Extraction     = solids ÷ dose',
+        '               = ' + f(r.solids, 3) + ' g ÷ ' + dose + ' g',
+        '               = ' + f(r.ey, 2) + '%'
+      ];
+      $('methodNote').textContent = 'Beverage-weight method: use for pourover, drip and espresso, where you weigh what is in the cup.';
+    } else {
+      lines = [
+        'Solution: water + solids at TDS T, so T = S ÷ (W + S)',
+        '  ⇒ S = T × W ÷ (1 − T)',
+        '',
+        'Solids         = ' + t + ' × ' + liq + ' g ÷ (1 − ' + t + ')',
+        '               = ' + f(t * liq, 3) + ' g ÷ ' + f(1 - t, 4) + ' = ' + f(r.solids, 3) + ' g',
+        'Extraction     = ' + f(r.solids, 3) + ' g ÷ ' + dose + ' g = ' + f(r.ey, 2) + '%',
+        '',
+        'Shortcut (drops 1 − T): ' + t + ' × ' + liq + ' ÷ ' + dose + ' = ' + f(r.shortcutEy, 2) + '%'
+      ];
+      $('methodNote').textContent = 'Brew-water method: use for French press, cupping, or any brew where every gram of water steeps with the grounds. The two formulas disagree by ' + f(r.ey - r.shortcutEy, 2) + ' points; see note 3.';
+    }
+    $('work').textContent = lines.join('\n');
+  }
+  ['tds', 'dose', 'liq'].forEach(function (id) { $(id).addEventListener('input', render); });
+  render();
+})();
+</script>
+</body>
+</html>

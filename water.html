@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Water Recipe — CremaTheory</title>
+<meta name="description" content="Grams of baking soda, Epsom salt and gypsum per liter of distilled or RO water for a target alkalinity and hardness, with resulting ion ppm and TDS.">
+<link rel="stylesheet" href="assets/crema.css">
+</head>
+<body>
+<header class="site-head">
+  <a class="brand" href="index.html">CremaTheory</a>
+  <nav>
+    <a href="water.html" aria-current="page">Water</a>
+    <a href="extraction.html">Extraction</a>
+    <a href="ratio.html">Ratio</a>
+    <a href="strength.html">Strength</a>
+    <a href="caffeine.html">Caffeine</a>
+  </nav>
+</header>
+<main>
+  <h1>Water recipe</h1>
+  <p class="why">Coffee is over 98% water, and the minerals in it decide what gets pulled out of the grounds. Bicarbonate (alkalinity) neutralizes acids, so too much tastes flat and too little tastes sharp. Calcium and magnesium (hardness) help extract flavor, and too much of them scales your machine. If you start from distilled or RO water, you set both yourself. Enter the targets and you get the grams.</p>
+
+  <form class="card" id="f" onsubmit="return false">
+    <div class="grid two">
+      <div>
+        <label for="alk">Alkalinity <span class="hint">mg/L as CaCO₃ · SCA: at or near 40</span></label>
+        <input id="alk" type="number" inputmode="decimal" min="0" step="any" value="40">
+      </div>
+      <div>
+        <label for="hard">Hardness <span class="hint">mg/L as CaCO₃ · SCA: 17–85, target 68<sup><a href="#n2">2</a></sup></span></label>
+        <input id="hard" type="number" inputmode="decimal" min="0" step="any" value="68">
+      </div>
+      <div>
+        <label for="mg">Hardness from magnesium: <output id="mgOut">50</output>%
+          <span class="hint">The rest comes from calcium<sup><a href="#n3">3</a></sup></span></label>
+        <input id="mg" type="range" min="0" max="100" step="5" value="50">
+      </div>
+      <div>
+        <label for="liters">Batch size <span class="hint">liters</span></label>
+        <input id="liters" type="number" inputmode="decimal" min="0" step="any" value="1">
+      </div>
+      <div>
+        <label for="buf">Alkalinity from</label>
+        <select id="buf">
+          <option value="NaHCO3">Baking soda (NaHCO₃)</option>
+          <option value="KHCO3">Potassium bicarbonate (KHCO₃)</option>
+        </select>
+      </div>
+      <div>
+        <label for="tdsT">Target TDS (optional) <span class="hint">mg/L · checked, not solved for<sup><a href="#n4">4</a></sup></span></label>
+        <input id="tdsT" type="number" inputmode="decimal" min="0" step="any" placeholder="e.g. 150">
+      </div>
+    </div>
+  </form>
+
+  <section class="card" aria-live="polite">
+    <h2 style="margin-top:0">Add to <span id="batchL">1</span> L of distilled or RO water</h2>
+    <p class="error" id="err" hidden></p>
+    <table id="salts">
+      <thead><tr><th>Salt</th><th class="num">Per liter</th><th class="num">Batch</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <ul class="notes" id="warn"></ul>
+
+    <h2>What ends up in the water</h2>
+    <table id="ions">
+      <thead><tr><th>Ion</th><th class="num">mg/L (ppm)</th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <h2>Dissolved solids</h2>
+    <table id="tds">
+      <tbody></tbody>
+    </table>
+    <p class="sub" id="tdsCheck"></p>
+  </section>
+
+  <h2>How it's worked out</h2>
+  <div class="work" id="work"></div>
+
+  <section class="foot">
+    <ol>
+      <li id="n1">Assumes the starting water is 0 ppm. Measure your RO or distilled water; if it reads above ~5 ppm, the result will be off by that much.</li>
+      <li id="n2">SCA Water Standard, from the SCAA <em>Water Quality Handbook</em> (2011): TDS 150 mg/L (75–250), hardness 68 mg/L as CaCO₃ (17–85), alkalinity at or near 40 mg/L, sodium at or near 10 mg/L, pH 7.0 (6.5–7.5). The chart says “calcium hardness”; we apply it to total hardness (Ca + Mg), as most recipe writers do. That reading is common, not settled.</li>
+      <li id="n3">The SCA standard does not specify a Ca:Mg split. Some writers prefer magnesium for extraction. Calcium is more prone to scale in espresso boilers. None of this is settled, so the split is yours and 50% is only a starting point. Gypsum dissolves slowly; stir or shake until clear.</li>
+      <li id="n4">With three salts, alkalinity and hardness (plus the split) fix every gram, so TDS follows from them. We show the result against your target instead of quietly bending one of the others. “Ion sum” counts every dissolved ion. “Evaporated residue” uses the lab convention (dried at 180 °C, where bicarbonate breaks down to carbonate). A TDS pen reads conductivity and multiplies by a fixed factor, so its reading will match neither exactly.</li>
+      <li id="n5">Using baking soda for alkalinity also adds sodium: 40 mg/L of alkalinity brings about 18 mg/L Na, which is above the SCA's “at or near 10”. Potassium bicarbonate avoids this. Whether small amounts of sodium are noticeable in the cup is disputed.</li>
+      <li>Molar masses are computed from standard atomic weights: NaHCO₃ 84.006, KHCO₃ 100.114, MgSO₄·7H₂O 246.466, CaSO₄·2H₂O 172.164, CaCO₃ 100.086 g/mol. Use USP/food-grade salts. Epsom salt must be plain, not scented.</li>
+    </ol>
+  </section>
+</main>
+<footer class="site-foot">CremaTheory. You enter what you know and get an exact answer.</footer>
+
+<script src="assets/crema.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var names = {
+    buffer: { NaHCO3: 'Baking soda (NaHCO₃)', KHCO3: 'Potassium bicarbonate (KHCO₃)' },
+    epsom: 'Epsom salt (MgSO₄·7H₂O)',
+    gypsum: 'Gypsum (CaSO₄·2H₂O)'
+  };
+  function g(v) { return v < 1 ? v.toFixed(3) + ' g' : v.toFixed(2) + ' g'; }
+  function ppm(v) { return v.toFixed(1); }
+  function num(id) { var v = $(id).value; return v === '' ? NaN : Number(v); }
+
+  function render() {
+    $('mgOut').textContent = $('mg').value;
+    var buf = $('buf').value;
+    var input = { alkalinity: num('alk'), hardness: num('hard'), mgShare: Number($('mg').value) / 100, liters: num('liters'), buffer: buf };
+    var r;
+    try { r = Crema.waterRecipe(input); $('err').hidden = true; }
+    catch (e) { $('err').textContent = e.message; $('err').hidden = false; return; }
+
+    $('batchL').textContent = input.liters;
+    var rows = [[names.buffer[buf], 'buffer'], [names.epsom, 'epsom'], [names.gypsum, 'gypsum']];
+    $('salts').tBodies[0].innerHTML = rows.map(function (x) {
+      return '<tr><td>' + x[0] + '</td><td class="num">' + g(r.perLiter[x[1]]) + '</td><td class="num"><strong>' + g(r.batch[x[1]]) + '</strong></td></tr>';
+    }).join('');
+
+    var ionRows = [['Calcium (Ca²⁺)', r.ions.Ca], ['Magnesium (Mg²⁺)', r.ions.Mg]];
+    ionRows.push(buf === 'NaHCO3' ? ['Sodium (Na⁺)', r.ions.Na] : ['Potassium (K⁺)', r.ions.K]);
+    ionRows.push(['Bicarbonate (HCO₃⁻)', r.ions.HCO3], ['Sulfate (SO₄²⁻)', r.ions.SO4]);
+    $('ions').tBodies[0].innerHTML = ionRows.map(function (x) {
+      return '<tr><td>' + x[0] + '</td><td class="num">' + ppm(x[1]) + '</td></tr>';
+    }).join('');
+
+    $('tds').tBodies[0].innerHTML =
+      '<tr><td>Ion sum</td><td class="num"><strong>' + ppm(r.tds.ionSum) + ' mg/L</strong></td></tr>' +
+      '<tr><td>Evaporated residue (180 °C)</td><td class="num">' + ppm(r.tds.evaporated) + ' mg/L</td></tr>';
+
+    var sca = Crema.SCA_WATER.tds, t = r.tds.ionSum;
+    var msg = 'SCA range 75–250 mg/L (target 150): ion sum is ' + (t < sca.min ? 'below' : t > sca.max ? 'above' : 'within') + ' range.';
+    var tgt = num('tdsT');
+    if (isFinite(tgt) && tgt > 0) {
+      var d = t - tgt;
+      msg += ' Your target ' + tgt + ' mg/L: result is ' + (d >= 0 ? '+' : '−') + Math.abs(d).toFixed(1) + ' mg/L. To move TDS, change alkalinity or hardness.';
+    }
+    $('tdsCheck').textContent = msg;
+
+    var w = [], small = [];
+    r.warnings.forEach(function (x) {
+      if (x.code === 'below-scale') small.push(x.salt === 'buffer' ? names.buffer[buf].split(' (')[0] : names[x.salt].split(' (')[0]);
+      if (x.code === 'sodium-over-sca') w.push('Sodium ' + ppm(r.ions.Na) + ' mg/L is above the SCA “at or near 10”.');
+      if (x.code === 'gypsum-solubility') w.push('Gypsum is above ~2 g/L and may not fully dissolve.');
+    });
+    if (small.length) w.unshift('Under 0.1 g of ' + small.join(', ') + ': weigh on a 0.001 g scale, or make a bigger batch.');
+    $('warn').innerHTML = w.map(function (s) { return '<li class="warn">' + s + '</li>'; }).join('');
+
+    var M = Crema.MOLAR, mm = r.mmol, bufM = M[buf];
+    $('work').textContent = [
+      'HCO₃⁻   = ' + input.alkalinity + ' ÷ 50.043            = ' + mm.HCO3.toFixed(4) + ' mmol/L',
+      buf + '  = ' + mm.HCO3.toFixed(4) + ' × ' + bufM.toFixed(3) + ' ÷ 1000   = ' + r.perLiter.buffer.toFixed(4) + ' g/L',
+      'Ca+Mg   = ' + input.hardness + ' ÷ 100.086           = ' + (mm.Ca + mm.Mg).toFixed(4) + ' mmol/L',
+      'Mg      = ' + (input.mgShare * 100).toFixed(0) + '% of that              = ' + mm.Mg.toFixed(4) + ' mmol/L',
+      'Ca      = the rest                    = ' + mm.Ca.toFixed(4) + ' mmol/L',
+      'Epsom   = ' + mm.Mg.toFixed(4) + ' × 246.466 ÷ 1000   = ' + r.perLiter.epsom.toFixed(4) + ' g/L',
+      'Gypsum  = ' + mm.Ca.toFixed(4) + ' × 172.164 ÷ 1000   = ' + r.perLiter.gypsum.toFixed(4) + ' g/L',
+      '',
+      'Alkalinity: 1 mmol HCO₃⁻ = 1 meq = 50.043 mg as CaCO₃',
+      'Hardness:   1 mmol Ca²⁺ or Mg²⁺ = 100.086 mg as CaCO₃',
+      'Each salt dissolves 1:1; hydrate water joins the solvent.'
+    ].join('\n');
+  }
+  ['alk', 'hard', 'mg', 'liters', 'buf', 'tdsT'].forEach(function (id) { $(id).addEventListener('input', render); });
+  render();
+})();
+</script>
+</body>
+</html>

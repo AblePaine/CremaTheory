@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Caffeine Estimator — CremaTheory</title>
+<meta name="description" content="Estimate caffeine in a cup of coffee from dose, species and brew method, with an honest range.">
+<link rel="stylesheet" href="assets/crema.css">
+</head>
+<body>
+<header class="site-head">
+  <a class="brand" href="index.html">CremaTheory</a>
+  <nav>
+    <a href="water.html">Water</a>
+    <a href="extraction.html">Extraction</a>
+    <a href="ratio.html">Ratio</a>
+    <a href="strength.html">Strength</a>
+    <a href="caffeine.html" aria-current="page">Caffeine</a>
+  </nav>
+</header>
+<main>
+  <h1>Caffeine estimator</h1>
+  <p class="why">Most of the caffeine in a cup depends on how much coffee went in, and what kind. Robusta has nearly twice as much as arabica. Brew method changes the amount less than people expect, because caffeine dissolves easily. This is the one calculator on the site that can't give an exact answer. Unless a lab measured your beans, it's an estimate, so we show a range.</p>
+
+  <form class="card" onsubmit="return false">
+    <div class="grid two">
+      <div>
+        <label for="dose">Dose <span class="hint">g coffee</span></label>
+        <input id="dose" type="number" inputmode="decimal" min="0" step="any" value="20">
+      </div>
+      <div>
+        <label for="method">Method</label>
+        <select id="method"></select>
+      </div>
+      <div>
+        <label for="species">Coffee</label>
+        <select id="species">
+          <option value="arabica">Arabica</option>
+          <option value="blend">Arabica / robusta blend</option>
+          <option value="robusta">Robusta</option>
+          <option value="decaf">Decaf</option>
+        </select>
+      </div>
+      <div id="blendWrap" hidden>
+        <label for="rob">Robusta in blend: <output id="robOut">20</output>%</label>
+        <input id="rob" type="range" min="0" max="100" step="5" value="20">
+      </div>
+    </div>
+  </form>
+
+  <section class="card" aria-live="polite">
+    <p class="error" id="err" hidden></p>
+    <div id="out">
+      <p class="sub" style="margin:0">Estimate</p>
+      <div class="result">≈ <span id="mg">–</span> <small>mg caffeine</small></div>
+      <p class="sub">Plausible range <strong id="range"></strong>. This is not a measurement.<sup><a href="#n1">1</a></sup></p>
+    </div>
+  </section>
+
+  <h2>How it's worked out</h2>
+  <div class="work" id="work"></div>
+
+  <section class="foot">
+    <ol>
+      <li id="n1">This is an estimate that depends on extraction. Caffeine = dose × caffeine content × share that reaches the cup. Both factors are house assumptions set to cover the published literature. They don't come from any single study. Content: arabica about 1.2% (0.9–1.5%), robusta about 2.2% (1.7–2.8%), decaf under 0.1% (the EU limit for decaf roasted coffee). Content varies by cultivar, origin and roast. Share reaching the cup: filter and immersion about 90% (80–100%), moka about 85%, espresso about 80% (65–95%), cold brew about 85% (70–100%). Grind, time and temperature all move these.</li>
+      <li>The range multiplies the low ends together and the high ends together, so it's the widest spread these assumptions allow. It is not a statistical confidence interval.</li>
+      <li>If caffeine matters for your health, go by lab-tested figures from the roaster, not this estimate.</li>
+    </ol>
+  </section>
+</main>
+<footer class="site-foot">CremaTheory. You enter what you know and get an exact answer.</footer>
+
+<script src="assets/crema.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  function num(id) { var v = $(id).value; return v === '' ? NaN : Number(v); }
+  function pct(v) { return (v * 100).toFixed(v < 0.01 ? 2 : 1) + '%'; }
+  var T = Crema.CAFFEINE_TRANSFER;
+  $('method').innerHTML = Object.keys(T).map(function (k) { return '<option value="' + k + '">' + T[k].label + '</option>'; }).join('');
+
+  function render() {
+    var sp = $('species').value;
+    $('blendWrap').hidden = sp !== 'blend';
+    $('robOut').textContent = $('rob').value;
+    var share = sp === 'robusta' ? 1 : sp === 'blend' ? Number($('rob').value) / 100 : 0;
+    var r;
+    try {
+      r = Crema.estimateCaffeine({ dose: num('dose'), method: $('method').value, species: sp === 'decaf' ? 'decaf' : undefined, robustaShare: share });
+      $('err').hidden = true; $('out').hidden = false;
+    } catch (e) { $('err').textContent = e.message; $('err').hidden = false; $('out').hidden = true; $('work').textContent = ''; return; }
+    var round5 = function (v) { return v < 20 ? v.toFixed(1) : String(Math.round(v / 5) * 5); };
+    $('mg').textContent = round5(r.mg);
+    $('range').textContent = round5(r.low) + '–' + round5(r.high) + ' mg';
+    var d = num('dose');
+    $('work').textContent = [
+      'mg = dose × content × transfer',
+      '   = ' + d + ' g × ' + pct(r.content.mid) + ' × ' + pct(r.transfer.mid) + ' × 1000',
+      '   = ' + r.mg.toFixed(0) + ' mg  (shown rounded to the nearest 5)',
+      '',
+      'low  = ' + d + ' × ' + pct(r.content.low) + ' × ' + pct(r.transfer.low) + ' = ' + r.low.toFixed(0) + ' mg',
+      'high = ' + d + ' × ' + pct(r.content.high) + ' × ' + pct(r.transfer.high) + ' = ' + r.high.toFixed(0) + ' mg'
+    ].join('\n');
+  }
+  ['dose', 'method', 'species', 'rob'].forEach(function (id) { $(id).addEventListener('input', render); });
+  render();
+})();
+</script>
+</body>
+</html>
